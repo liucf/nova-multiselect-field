@@ -31,7 +31,9 @@ trait MultiselectBelongsToSupport
         $this->resolveUsing(function ($value) use ($async, $resourceClass) {
             $keyName = $this->keyName ?? $resourceClass::newModel()->getKeyName();
 
-            if ($async) $this->associatableResource($resourceClass);
+            if ($async) {
+                $this->associatableResource($resourceClass);
+            }
 
             $request = app(NovaRequest::class);
             $value = $value->{$keyName} ?? null;
@@ -98,7 +100,9 @@ trait MultiselectBelongsToSupport
         ]);
 
         $this->resolveUsing(function ($value) use ($async, $resourceClass) {
-            if ($async) $this->associatableResource($resourceClass);
+            if ($async) {
+                $this->associatableResource($resourceClass);
+            }
 
             $value = $value ?: collect();
             $request = app(NovaRequest::class);
@@ -126,8 +130,20 @@ trait MultiselectBelongsToSupport
                     throw new RuntimeException("{$model}::{$attribute} does not appear to model a BelongsToMany or MorphsToMany.");
                 }
 
+                $syncAttributes = $request->get($attribute) ?: [];
+                if ($attribute == 'tags') {
+                    foreach ($syncAttributes as $key => $syncAttribute) {
+                        if (! is_numeric($syncAttribute)) {
+                            $newtag = $relation->create([
+                                'name' => $syncAttribute,
+                            ]);
+                            $syncAttributes[$key] = $newtag->id;
+                        }
+                    }
+                }
+
                 // Sync
-                $relation->sync($request->get($attribute) ?: []);
+                $relation->sync($syncAttributes);
             });
         });
 
